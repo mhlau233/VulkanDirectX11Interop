@@ -38,7 +38,8 @@ void DXSwapChain::InitWindow()
 
     RegisterClass(&wc);
 
-    this->windowHandle = CreateWindowEx(0, .CLASS_NAME,
+    this->windowHandle = CreateWindowEx(0,
+                                        CLASS_NAME,
                                         {"Learn to Program Windows"},
                                         WS_OVERLAPPEDWINDOW,
 
@@ -86,6 +87,8 @@ void DXSwapChain::InitD3D()
 
     scd.BufferCount = 1;
     scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    scd.BufferDesc.Width = 1024;
+    scd.BufferDesc.Height = 768;
     scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     scd.OutputWindow = windowHandle;
     scd.SampleDesc.Count = 1;
@@ -96,7 +99,7 @@ void DXSwapChain::InitD3D()
     result = D3D11CreateDeviceAndSwapChain(adpt,
                                            D3D_DRIVER_TYPE_UNKNOWN,
                                            NULL,
-                                           NULL,
+                                           D3D11_CREATE_DEVICE_DEBUG,
                                            &featureLevel,
                                            1,
                                            D3D11_SDK_VERSION,
@@ -111,6 +114,22 @@ void DXSwapChain::InitD3D()
     device->CreateRenderTargetView(renderTargetTexture, NULL, &renderTargetTextureView);
 
     devCon->OMSetRenderTargets(1, &renderTargetTextureView, NULL);
+
+    D3D11_TEXTURE2D_DESC sharedTextureDesc = {};
+    sharedTextureDesc.Width = WINDOW_WIDTH;
+    sharedTextureDesc.Height = WINDOW_HEIGHT;
+    sharedTextureDesc.MipLevels = 1;
+    sharedTextureDesc.ArraySize = 1;
+    sharedTextureDesc.SampleDesc = {1, 0};
+    sharedTextureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    sharedTextureDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
+
+    result = device->CreateTexture2D(&sharedTextureDesc, NULL, &sharedTexture);
+    result = sharedTexture->QueryInterface(__uuidof(IDXGIResource1), (void **)&sharedTextureResource);
+    result = sharedTextureResource->CreateSharedHandle(NULL,
+                                                       GENERIC_ALL,
+                                                       NULL,
+                                                       &sharedTextureHandle);
 
     D3D11_VIEWPORT viewport;
     ZeroMemory(&viewport, sizeof(D3D11_VIEWPORT));
@@ -132,23 +151,11 @@ void DXSwapChain::CleanD3D()
 
 void DXSwapChain::Frame()
 {
-    MSG msg = {0};
+    IDXGIKeyedMutex *km;
+    auto hr = sharedTextureResource->QueryInterface(__uuidof(IDXGIKeyedMutex), (void **)&km);
 
-    while (1)
-    {
-        if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-        {
-            TranslateMessage(&msg);
-
-            DispatchMessage(&msg);
-
-            if (msg.message == WM_QUIT)
-                break;
-        }
-
-        float clearColor[] = {1.0, 0.0, 0.0, 1.0};
-        devCon->ClearRenderTargetView(renderTargetTextureView, clearColor);
-
-        swapChain->Present(0, 0);
-    }
+    km->AcquireSync(0, INFINITE);
+    devCon->CopyResource(renderTargetTexture, sharedTexture);
+    km->ReleaseSync(0);
+    swapChain->Present(1, 0);
 }

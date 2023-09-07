@@ -1,7 +1,7 @@
 #pragma once
 
-#include <d3d11.h>
 #include <dxgi.h>
+#include <d3d11_3.h>
 
 class DXSwapChain
 {
@@ -20,4 +20,8 @@ public:
     IDXGISwapChain *swapChain;
     ID3D11Texture2D *renderTargetTexture;
     ID3D11RenderTargetView *renderTargetTextureView;
+
+    ID3D11Texture2D *sharedTexture;
+    IDXGIResource1 *sharedTextureResource;
+    HANDLE sharedTextureHandle;
 };
