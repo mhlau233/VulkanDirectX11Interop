@@ -11,7 +11,6 @@ public:
     void Frame();
 
     void InitD3D();
-    void CleanD3D();
 
     HWND windowHandle;
 

@@ -142,13 +142,6 @@ void DXSwapChain::InitD3D()
     devCon->RSSetViewports(1, &viewport);
 }
 
-void DXSwapChain::CleanD3D()
-{
-    swapChain->Release();
-    device->Release();
-    devCon->Release();
-}
-
 void DXSwapChain::Frame()
 {
     IDXGIKeyedMutex *km;
